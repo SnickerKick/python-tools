@@ -25,9 +25,14 @@ os.environ["GOOGLE_API_KEY"] = "AIzaSyBwqdWMfytQAuwLzG5MXmgZ9oxLbKYzTxY"
 import geocoder as geo
 import pandas as pd
 
+from tkinter import filedialog
+from tkinter import *
+
 # Open the input file
 
-inputFile = pd.read_csv('e:\Downloads\Raw Addresses.csv')
+filename = filedialog.askopenfilename(title = 'Select Input File')
+
+inputFile = pd.read_csv(filename)
 
 col_headings = ['First Name',
                 'Last Name',
@@ -88,6 +93,11 @@ for index, row in inputFile.iterrows() :
     
     outputFile = outputFile.append(new_row, ignore_index=True)
 
-writer = pd.ExcelWriter('e:\Downloads\Cleansed Addresses.xlsx')
+
+# Write out the results
+
+outputFile = filedialog.asksaveasfile(title = 'Save As..')
+
+writer = pd.ExcelWriter(outputFile)
 outputFile.to_excel(writer, 'Cleansed Addresses')
 writer.save()
