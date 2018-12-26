@@ -25,12 +25,12 @@ os.environ["GOOGLE_API_KEY"] = "AIzaSyBwqdWMfytQAuwLzG5MXmgZ9oxLbKYzTxY"
 import geocoder as geo
 import pandas as pd
 
-from tkinter import filedialog
 from tkinter import *
+from tkinter.filedialog import askopenfilename, asksaveasfilename, askdirectory
 
 # Open the input file
 
-filename = filedialog.askopenfilename(title = 'Select Input File')
+filename = askopenfilename(title = 'Select Input File')
 
 inputFile = pd.read_csv(filename)
 
@@ -44,7 +44,7 @@ col_headings = ['First Name',
                 'Email',
                 'Phone']
 
-outputFile = pd.DataFrame(columns=col_headings)
+outputData = pd.DataFrame(columns=col_headings)
 
 # Iterate through each entry and have Google clean up the address
 
@@ -91,13 +91,13 @@ for index, row in inputFile.iterrows() :
                'Email' : row['email'].lower(),
                'Phone' : row['Phone']}
     
-    outputFile = outputFile.append(new_row, ignore_index=True)
+    outputData = outputData.append(new_row, ignore_index=True)
 
 
 # Write out the results
 
-outputFile = filedialog.asksaveasfile(title = 'Save As..')
+outputFile = asksaveasfilename(title = 'Save As..')
 
 writer = pd.ExcelWriter(outputFile)
-outputFile.to_excel(writer, 'Cleansed Addresses')
+outputData.to_excel(writer, 'Cleansed Addresses')
 writer.save()
