@@ -1,18 +1,24 @@
 #
-# clean-address.py
+# clean-and create-import-files.py
 #
-# Python script which takes a csv file with a list of raw mailing addresses
-# uses the Google geocoder API to clean then break into the following fields:
+# Python script which takes a csv file with the following columns (order is unimportant):
+#   - First Name
+#   - Last Name
+#   - Address 1  |
+#   - Address 2  |
+#   - Address 3  | - The combined values of these six fields is the respondents'
+#   - Address 4  | - uncleansed address.  These values can all be in one field
+#   - Address 5  | - or braken across all three
+#   - Address 6  |
+#   - Phone
+#   - Email
+#   - Incentive
 #
-#   - House number
-#   - Street
-#   - Apt / Unit / etc
-#   - City
-#   - State
-#   - Zip Code
+# The Google geocoder API to clean and produce two files:
+#   - QBO Vendor Import.cvs
+#   - QBO Incentives Import.cvs
 #
-# and then write the results to a csv file
-#
+
 
 # set up the Google Geocoding API key.  This needs to be done before importing 
 # the geocoder library
