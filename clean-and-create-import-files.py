@@ -15,8 +15,8 @@
 #   - Incentive
 #
 # The Google geocoder API to clean and produce two files:
-#   - QBO Vendor Import.cvs
-#   - QBO Incentives Import.cvs
+#   - QBO Vendor Import.xlsx
+#   - QBO Incentives Import.xlsx
 #
 
 
@@ -30,9 +30,11 @@ os.environ["GOOGLE_API_KEY"] = "AIzaSyBwqdWMfytQAuwLzG5MXmgZ9oxLbKYzTxY"
 
 import geocoder as geo
 import pandas as pd
+import datetime
+import string
+import re
 
-from tkinter import *
-from tkinter.filedialog import askopenfilename, asksaveasfilename, askdirectory
+from tkinter.filedialog import askopenfilename, asksaveasfilename
 
 # Open the input file
 
@@ -40,22 +42,43 @@ filename = askopenfilename(title = 'Select Input File')
 
 inputFile = pd.read_csv(filename)
 
-col_headings = ['First Name',
-                'Last Name',
-                'Street Address',
-                'Unit',
-                'City',
-                'State',
-                'Zip',
-                'Email',
-                'Phone']
+# Set up the two output datasets
 
-outputData = pd.DataFrame(columns=col_headings)
+vendorColHeadings = ['First Name',
+                       'Last Name',
+                       'Primary Number',
+                       'Email',
+                       'Address',
+                       'City',
+                       'State',
+                       'Zip Code']
+
+incentivesColHeadings = ['Bill Number',
+                           'Vendor',
+                           'Bill Date',
+                           'Due Date',
+                           'Terms',
+                           'Memo',
+                           'Expense Account',
+                           'Expense Description',
+                           'Expense Line Amount',
+                           'Expense Customer']
+
+vendorData = pd.DataFrame(columns=vendorColHeadings)
+incentiveData = pd.DataFrame(columns=incentivesColHeadings)
+
+# Set some variable before iterating
+
+billNumber = 1001
+billDate = datetime.datetime.now().strftime("%m/%d/%Y")
 
 # Iterate through each entry and have Google clean up the address
 
+
 for index, row in inputFile.iterrows() :
-    address_string = row['Street Address'] + ' ' + str(row['City']) + ' ' + str(row['State']) + ' ' + str(row['Zip'])
+    address_string = str(row['Address 1']) + ' ' + str(row['Address 2']) + ' '\
+                     + str(row['Address 3']) + ' ' + str(row['Address 4']) +  \
+                     ' ' + str(row['Address 5']) + ' ' + str(row['Address 6'])
     g = geo.google(address_string)
 
 # Handle missing data
@@ -84,27 +107,63 @@ for index, row in inputFile.iterrows() :
         zip = g.osm['addr:postal']
     except:
         zip = '<missing postal'
+
+# Clean up phone number
+    
+    allow = string.digits
+    phone = re.sub('[^%s]' % allow, '', row['Phone'])
+    phone = phone[:3] + '-' + phone[3:6] + '-' + phone[6:]
         
 # Build the new row    
     
-    new_row = {'First Name' : row['First Name'].title(),
-               'Last Name' : row['Last Name'].title(),
-               'Street Address' : houseNumber + ' ' + street,
-               'Unit' : row['Unit'],
-               'City' : city,
-               'State' : state,
-               'Zip' : zip,
-               'Email' : row['Email'].lower(),
-               'Phone' : row['Phone'],
-               'Incentive' : row['Incentive']}
+    vendorNewRow = {'First Name' : row['First Name'].title(),
+                      'Last Name' : row['Last Name'].title(),
+                      'Primary Number' : phone,
+                      'Email' : row['Email'].lower(),
+                      'Address' : houseNumber + ' ' + street,
+                      'City' : city,
+                      'State' : state,
+                      'Zip Code' : zip}
+                      
+    incentivesNewRow = {'Bill Number' : billNumber,
+                          'Vendor' : row['First Name'].title() + ' ' + row['Last Name'].title(),
+                          'Bill Date' : billDate,
+                          'Due Date' : '',
+                          'Terms' : 'Net 30',
+                          'Memo' : '',
+                          'Expense Account' : '',
+                          'Expense Description' : 'Research Participants',
+                          'Expense Line Amount' : row['Incentive'],
+                          'Expense Customer' : ''}
+
+    billNumber += 1
     
-    outputData = outputData.append(new_row, ignore_index=True)
+    vendorData = vendorData.append(vendorNewRow, ignore_index=True)
+    incentiveData = incentiveData.append(incentivesNewRow, ignore_index=True)
 
 
 # Write out the results
 
-outputFile = asksaveasfilename(title = 'Save As..')
+outputFile = asksaveasfilename(title = 'Vendors Save As..')
 
 writer = pd.ExcelWriter(outputFile)
-outputData.to_excel(writer, 'Cleansed Addresses')
+vendorData.to_excel(writer, 'Vendor Import')
 writer.save()
+
+outputFile = asksaveasfilename(title = 'Incentives Save As..')
+
+writer = pd.ExcelWriter(outputFile)
+incentiveData.to_excel(writer, 'Cleansed Addresses')
+writer.save()
+
+
+
+
+
+
+
+
+
+
+
+
