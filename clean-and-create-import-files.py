@@ -14,25 +14,17 @@
 #   - Email
 #   - Incentive
 #
-# The Google geocoder API to clean and produce two files:
-#   - QBO Vendor Import.xlsx
-#   - QBO Incentives Import.xlsx
+# The usaddress package is used to break the address into individual commponents,
+# and the pysusps package to verify address
 #
-
-
-# set up the Google Geocoding API key.  This needs to be done before importing 
-# the geocoder library
-
-import os
-os.environ["GOOGLE_API_KEY"] = "AIzaSyBwqdWMfytQAuwLzG5MXmgZ9oxLbKYzTxY"
 
 # Import the needed libraries
 
-import geocoder as geo
 import pandas as pd
 import datetime
 import string
 import re
+import usaddress
 
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 
@@ -51,7 +43,8 @@ vendorColHeadings = ['First Name',
                        'Address',
                        'City',
                        'State',
-                       'Zip Code']
+                       'Zip Code',
+                       'Unknown']
 
 incentivesColHeadings = ['Bill Number',
                            'Vendor',
@@ -72,41 +65,59 @@ incentiveData = pd.DataFrame(columns=incentivesColHeadings)
 billNumber = 1001
 billDate = datetime.datetime.now().strftime("%m/%d/%Y")
 
-# Iterate through each entry and have Google clean up the address
+# Iterate through each entry, parse and clean
 
 
 for index, row in inputFile.iterrows() :
-    address_string = str(row['Address 1']) + ' ' + str(row['Address 2']) + ' '\
+    addressString = str(row['Address 1']) + ' ' + str(row['Address 2']) + ' '\
                      + str(row['Address 3']) + ' ' + str(row['Address 4']) +  \
                      ' ' + str(row['Address 5']) + ' ' + str(row['Address 6'])
-    g = geo.google(address_string)
 
-# Handle missing data
+# initialize loop accumulators
     
-    try:
-        houseNumber = g.osm['addr:housenumber']
-    except:
-        houseNumber = '<missing houseNumber>'
+    address = ''
+    unit = ''
+    city = ''
+    state = ''
+    zip = ''
+    unknown = ''
+
+# break address into components
+
+    parsedAddress = usaddress.parse(addressString)
+    
+    for tuple in parsedAddress :
+        if tuple[0] == 'nan' :
+            continue
         
-    try:
-        street = g.osm['addr:street']
-    except:
-        street = '<missing street>'
-        
-    try:
-        city = g.osm['addr:city']
-    except:
-        city = '<missing city>'
-        
-    try:
-        state = g.osm['addr:state']
-    except:
-        state = '<state>'
-        
-    try:
-        zip = g.osm['addr:postal']
-    except:
-        zip = '<missing postal'
+        if tuple[1] == 'AddressNumber' :
+            address += tuple[0] + ' '
+        elif tuple[1] == 'StreetName' :
+            address += tuple[0] + ' '
+        elif tuple[1] == 'StreetNamePreDirectional' :
+            address = tuple[0] + ' ' + address
+        elif tuple[1] == 'StreetNamePostType' :
+            address += tuple[0] + ' '
+        elif tuple[1] == 'OccupancyType' :
+            unit += tuple[0] + ' '
+        elif tuple[1] == 'OccupancyIdentifier' :
+            unit += tuple[0] + ' '
+        elif tuple[1] == 'PlaceName' :
+            city += tuple[0] + ' '
+        elif tuple[1] == 'StateName' :
+            state += tuple[0] + ' '
+        elif tuple[1] == 'ZipCode' :
+            zip += tuple[0] + ' '
+        else :
+            unknown += tuple[1] + ':' + tuple[0] + ' '
+
+# clean up trailing spaces
+            
+    address = address.strip()
+    unit = unit.strip()
+    city = city.strip()
+    state = state.strip()
+    zip = zip.strip()
 
 # Clean up phone number
     
@@ -120,10 +131,11 @@ for index, row in inputFile.iterrows() :
                       'Last Name' : row['Last Name'].title(),
                       'Primary Number' : phone,
                       'Email' : row['Email'].lower(),
-                      'Address' : houseNumber + ' ' + street,
+                      'Address' : (address + ' ' + unit).strip(),
                       'City' : city,
                       'State' : state,
-                      'Zip Code' : zip}
+                      'Zip Code' : zip,
+                      'Unknown' : unknown}
                       
     incentivesNewRow = {'Bill Number' : billNumber,
                           'Vendor' : row['First Name'].title() + ' ' + row['Last Name'].title(),
